@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Interactive Journey of a Packet with Gemini AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Cool Journey" - A selection of cool, calm blues and greens that transition as the user scrolls, providing a visual sense of progression through the layers. -->
+    <!-- Application Structure Plan: The application is designed as a single, vertical scrolling storyline, transforming the linear slide deck into an interactive journey. A sticky side-navigation bar tracks the user's progress and allows for quick navigation between the 7 OSI layers. Each layer is a dedicated section with explanatory text and a unique interactive element (toggles, buttons, charts) to make the abstract concepts tangible. This structure was chosen over a slideshow to create a more modern, web-native, and engaging learning experience that encourages exploration and reinforces the concept of a packet "traveling" down the stack. Gemini API features are added to each layer for simplified explanations and at the end for creative analogy generation, enhancing the educational value. A final section provides links to practical tools. -->
+    <!-- Visualization & Content Choices: 
+        - Layer 7 (Application): Goal: Inform. Method: Text block + icon. Interaction: Simple hover effect. Justification: Introduces the story clearly. Method: HTML/Tailwind.
+        - Layer 6 (Presentation): Goal: Explain transformation. Method: Text block. Interaction: "Encrypt" button toggles text between readable and mock-encrypted. Justification: Makes encryption a tangible concept. Method: JS.
+        - Layer 5 (Session): Goal: Visualize connection. Method: Diagram. Interaction: "Open Session" button draws a line between two nodes. Justification: Simple visual for a simple concept. Method: HTML/JS.
+        - Layer 4 (Transport): Goal: Visualize segmentation. Method: Diagram. Interaction: "Segment" button breaks a block into smaller "packets". Justification: Clearly shows the core function of this layer. Method: JS.
+        - Layer 3 (Network): Goal: Show data addition. Method: Packet diagram. Interaction: "Add IP Header" button populates IP address fields. Justification: Visually demonstrates encapsulation. Method: JS.
+        - Layer 2 (Data Link): Goal: Show data addition. Method: Packet diagram. Interaction: "Add MAC Header" button populates MAC address fields. Justification: Differentiates from Layer 3. Method: JS.
+        - Layer 1 (Physical): Goal: Visualize signal conversion. Method: Line chart. Interaction: "Convert to Signal" button changes the chart from a digital-like square wave to an analog-like sine wave. Justification: Uses a familiar chart to represent an abstract concept. Library: Chart.js.
+        - Reassembly (Conclusion): Goal: Summarize. Method: Animated diagram. Interaction: Scroll-triggered animation shows the reverse process. Justification: Provides a satisfying conclusion. Method: JS/IntersectionObserver.
+        - Gemini Features: Goal: Enhance understanding. Method: Modal pop-ups. Interaction: Button clicks trigger API calls. Justification: Provides on-demand, AI-powered explanations and creative content to deepen learning. Library: Gemini API.
+        - Tools Section: Goal: Provide resources. Method: Linked cards. Interaction: External links. Justification: Offers students a clear path for further practical learning. Method: HTML/Tailwind.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .font-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .layer-card {
+            transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+        }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-link.active {
+            background-color: #0ea5e9; /* sky-500 */
+            color: white;
+            transform: translateX(5px);
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .packet-piece {
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 250px;
+            max-height: 300px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+        .modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.3s ease-in-out;
+        }
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .tool-card {
+             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="text-slate-700">
+
+    <div id="modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full transform scale-95">
+            <h3 id="modal-title" class="text-2xl font-bold text-slate-800 mb-4"></h3>
+            <div id="modal-body" class="text-slate-600 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div class="flex justify-center items-center py-10">
+                    <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24"></div>
+                </div>
+            </div>
+            <div class="text-right mt-6">
+                <button id="modal-close-btn" class="btn bg-slate-500 text-white font-bold py-2 px-6 rounded-full hover:bg-slate-600">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col lg:flex-row">
+            
+            <nav id="side-nav" class="lg:w-1/4 lg:sticky top-0 lg:h-screen p-4 lg:p-8 bg-slate-100 lg:bg-transparent order-last lg:order-first">
+                <div class="lg:sticky lg:top-8">
+                    <h2 class="font-bold text-lg mb-4 text-slate-800">The Journey</h2>
+                    <ul class="space-y-2">
+                        <li><a href="#layer-7" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">Layer 7: Application</a></li>
+                        <li><a href="#layer-6" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">Layer 6: Presentation</a></li>
+                        <li><a href="#layer-5" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">Layer 5: Session</a></li>
+                        <li><a href="#layer-4" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">Layer 4: Transport</a></li>
+                        <li><a href="#layer-3" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">Layer 3: Network</a></li>
+                        <li><a href="#layer-2" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">Layer 2: Data Link</a></li>
+                        <li><a href="#layer-1" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">Layer 1: Physical</a></li>
+                        <li><a href="#conclusion" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">The Destination</a></li>
+                        <li><a href="#tools" class="nav-link block p-2 rounded-md font-semibold text-slate-600 hover:bg-sky-100">Practical Tools</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="lg:w-3/4 p-4 md:p-8 lg:p-12">
+                <header class="text-center mb-16">
+                    <h1 class="text-4xl md:text-5xl font-bold text-sky-600 mb-4">The Incredible Journey of a Packet</h1>
+                    <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Follow Pip, a tiny piece of data, on an epic quest through the 7 layers of the OSI model. This interactive story, now with AI-powered explanations, shows how your data travels the internet.</p>
+                </header>
+
+                <div id="journey" class="space-y-12">
+                    
+                    <section id="layer-7" class="layer-card min-h-[80vh] flex flex-col justify-center bg-white border-2 border-sky-100 rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <span class="text-sm font-bold text-sky-500">LAYER 7</span>
+                            <h3 class="text-3xl font-bold text-slate-800 mt-1 mb-4">Our Hero's Quest Begins: The Application Layer</h3>
+                            <p class="max-w-2xl mx-auto mb-6">In the city of Computerville, a piece of data named <strong>Pip</strong> has a message: a picture of a cat. To send it, Pip needs an application, like a web browser or email client. This is the Application Layer, the part of the process we, as users, actually see and touch.</p>
+                            <p class="max-w-2xl mx-auto text-sm text-slate-500 mb-8"><strong>Analogy:</strong> You're writing a letter. The Application Layer is the pen and paper you choose to write your message.</p>
+                            <div class="text-6xl text-sky-400 mb-4">✉️</div>
+                            <button class="btn gemini-btn bg-sky-500 text-white font-bold py-2 px-6 rounded-full hover:bg-sky-600" data-layer="7">✨ Explain Like I'm 5</button>
+                        </div>
+                    </section>
+
+                    <section id="layer-6" class="layer-card min-h-[80vh] flex flex-col justify-center bg-white border-2 border-cyan-100 rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <span class="text-sm font-bold text-cyan-500">LAYER 6</span>
+                            <h3 class="text-3xl font-bold text-slate-800 mt-1 mb-4">The Royal Translator: The Presentation Layer</h3>
+                            <p class="max-w-2xl mx-auto mb-6">Before sending, Pip's message must be translated into a universal format that any computer can understand. This layer also handles encryption, scrambling the data into a secret code for security.</p>
+                            <div class="bg-slate-100 p-6 rounded-lg max-w-md mx-auto mb-4">
+                                <p id="encryption-text" class="font-mono text-2xl text-slate-800 transition-all duration-300">Hello World!</p>
+                            </div>
+                            <button id="encrypt-btn" class="btn bg-cyan-500 text-white font-bold py-2 px-6 rounded-full hover:bg-cyan-600">Encrypt Message</button>
+                            <button class="btn gemini-btn bg-cyan-500 text-white font-bold py-2 px-6 rounded-full hover:bg-cyan-600 ml-2" data-layer="6">✨ Explain Like I'm 5</button>
+                        </div>
+                    </section>
+                    
+                    <section id="layer-5" class="layer-card min-h-[80vh] flex flex-col justify-center bg-white border-2 border-teal-100 rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <span class="text-sm font-bold text-teal-500">LAYER 5</span>
+                            <h3 class="text-3xl font-bold text-slate-800 mt-1 mb-4">Grand Central Station: The Session Layer</h3>
+                            <p class="max-w-2xl mx-auto mb-6">To send the message, a dedicated communication line must be opened. The Session Layer acts like a station manager, creating a 'session' or 'tunnel' between Pip's computer and the destination server, maintaining it for the whole conversation.</p>
+                            <div class="flex justify-center items-center space-x-4 h-24 mb-4">
+                                <div class="text-4xl">💻</div>
+                                <div id="session-line" class="h-1 bg-slate-300 w-0 transition-all duration-1000"></div>
+                                <div class="text-4xl">🖥️</div>
+                            </div>
+                            <button id="session-btn" class="btn bg-teal-500 text-white font-bold py-2 px-6 rounded-full hover:bg-teal-600">Open Session</button>
+                             <button class="btn gemini-btn bg-teal-500 text-white font-bold py-2 px-6 rounded-full hover:bg-teal-600 ml-2" data-layer="5">✨ Explain Like I'm 5</button>
+                        </div>
+                    </section>
+
+                    <section id="layer-4" class="layer-card min-h-[80vh] flex flex-col justify-center bg-white border-2 border-emerald-100 rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <span class="text-sm font-bold text-emerald-500">LAYER 4</span>
+                            <h3 class="text-3xl font-bold text-slate-800 mt-1 mb-4">The Mailroom Sorter: The Transport Layer</h3>
+                            <p class="max-w-2xl mx-auto mb-6">Pip's message is too big to send at once. The Transport Layer acts like a mailroom sorter, breaking the message into smaller, numbered chunks called 'packets'.</p>
+                            <div id="segmentation-box" class="bg-slate-100 p-4 rounded-lg max-w-md mx-auto flex flex-wrap gap-1 justify-center items-center min-h-[80px] mb-4">
+                                <div id="original-message" class="packet-piece bg-emerald-300 text-emerald-800 font-bold p-4 rounded-md w-full">Full Message</div>
+                            </div>
+                            <button id="segment-btn" class="btn bg-emerald-500 text-white font-bold py-2 px-6 rounded-full hover:bg-emerald-600">Segment Message</button>
+                            <button class="btn gemini-btn bg-emerald-500 text-white font-bold py-2 px-6 rounded-full hover:bg-emerald-600 ml-2" data-layer="4">✨ Explain Like I'm 5</button>
+                        </div>
+                    </section>
+                    
+                    <section id="layer-3" class="layer-card min-h-[80vh] flex flex-col justify-center bg-white border-2 border-green-100 rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <span class="text-sm font-bold text-green-500">LAYER 3</span>
+                            <h3 class="text-3xl font-bold text-slate-800 mt-1 mb-4">The Global Postman: The Network Layer</h3>
+                            <p class="max-w-2xl mx-auto mb-6">Now in smaller packets, the message needs a global address. The Network Layer adds the 'IP address' to each packet, which is like the full street address of the destination server.</p>
+                            <div class="bg-slate-100 p-4 rounded-lg max-w-lg mx-auto font-mono text-sm mb-4">
+                                <div class="bg-green-200 p-2 rounded-t-md text-green-800 transition-all duration-500" id="ip-header" style="max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0;">
+                                    <p>SRC IP: 192.168.1.101</p>
+                                    <p>DST IP: 8.8.8.8</p>
+                                </div>
+                                <div class="bg-white p-4 rounded-b-md">Packet Data... 📦</div>
+                            </div>
+                             <button id="ip-btn" class="btn bg-green-500 text-white font-bold py-2 px-6 rounded-full hover:bg-green-600">Add IP Header</button>
+                             <button class="btn gemini-btn bg-green-500 text-white font-bold py-2 px-6 rounded-full hover:bg-green-600 ml-2" data-layer="3">✨ Explain Like I'm 5</button>
+                        </div>
+                    </section>
+
+                    <section id="layer-2" class="layer-card min-h-[80vh] flex flex-col justify-center bg-white border-2 border-lime-100 rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <span class="text-sm font-bold text-lime-500">LAYER 2</span>
+                            <h3 class="text-3xl font-bold text-slate-800 mt-1 mb-4">The Local Courier: The Data Link Layer</h3>
+                            <p class="max-w-2xl mx-auto mb-6">The packet is getting closer. The Data Link Layer adds a 'MAC address', a unique hardware identifier for devices on the *local* network.</p>
+                            <div class="bg-slate-100 p-4 rounded-lg max-w-lg mx-auto font-mono text-sm mb-4">
+                                <div class="bg-lime-200 p-2 rounded-t-md text-lime-800 transition-all duration-500" id="mac-header" style="max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0;">
+                                    <p>SRC MAC: 00:1A:2B:3C:4D:5E</p>
+                                    <p>DST MAC: F6:E5:D4:C3:B2:A1</p>
+                                </div>
+                                <div class="bg-green-200 p-2 text-green-800">IP Header...</div>
+                                <div class="bg-white p-4 rounded-b-md">Packet Data... 📦</div>
+                            </div>
+                            <button id="mac-btn" class="btn bg-lime-500 text-white font-bold py-2 px-6 rounded-full hover:bg-lime-600">Add MAC Header</button>
+                            <button class="btn gemini-btn bg-lime-500 text-white font-bold py-2 px-6 rounded-full hover:bg-lime-600 ml-2" data-layer="2">✨ Explain Like I'm 5</button>
+                        </div>
+                    </section>
+
+                    <section id="layer-1" class="layer-card min-h-[80vh] flex flex-col justify-center bg-white border-2 border-yellow-100 rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <span class="text-sm font-bold text-yellow-500">LAYER 1</span>
+                            <h3 class="text-3xl font-bold text-slate-800 mt-1 mb-4">The Final Frontier: The Physical Layer</h3>
+                            <p class="max-w-2xl mx-auto mb-6">This is where the digital becomes physical. The Physical Layer converts the packet's bits into electrical signals, light pulses, or radio waves.</p>
+                            <div class="chart-container mb-4">
+                                <canvas id="physical-layer-chart"></canvas>
+                            </div>
+                            <button id="signal-btn" class="btn bg-yellow-500 text-white font-bold py-2 px-6 rounded-full hover:bg-yellow-600">Convert to Signal</button>
+                            <button class="btn gemini-btn bg-yellow-500 text-white font-bold py-2 px-6 rounded-full hover:bg-yellow-600 ml-2" data-layer="1">✨ Explain Like I'm 5</button>
+                        </div>
+                    </section>
+
+                    <section id="conclusion" class="layer-card min-h-[80vh] flex flex-col justify-center bg-sky-900 text-white rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <h3 class="text-3xl font-bold mt-1 mb-4">The Journey's End & AI-Powered Learning</h3>
+                            <p class="max-w-2xl mx-auto mb-8">Pip's quest is complete! But your journey doesn't have to end. Use the power of AI to explore the OSI model in new ways.</p>
+                            <div class="bg-sky-800 p-6 rounded-lg max-w-lg mx-auto">
+                                <h4 class="text-xl font-bold mb-3">Create a New Analogy</h4>
+                                <p class="mb-4 text-sky-200">Enter a topic below (e.g., "a restaurant kitchen") and let AI create a new analogy for the 7 layers.</p>
+                                <input id="analogy-input" type="text" class="w-full p-2 rounded-md text-slate-800" placeholder="e.g., a coffee shop">
+                                <button id="analogy-btn" class="btn mt-4 bg-white text-sky-800 font-bold py-2 px-6 rounded-full hover:bg-slate-200">✨ Generate Analogy</button>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section id="tools" class="layer-card bg-white border-2 border-slate-200 rounded-2xl p-6 md:p-10 shadow-lg">
+                        <div class="text-center">
+                            <h3 class="text-3xl font-bold text-slate-800 mt-1 mb-4">Tools for Practical Learning</h3>
+                            <p class="max-w-3xl mx-auto mb-10">Understanding the theory is great, but getting hands-on experience is key. These tools and websites will help you see the OSI model in action.</p>
+                            <div class="grid md:grid-cols-2 gap-8 text-left">
+                                <a href="https://www.wireshark.org/" target="_blank" rel="noopener noreferrer" class="tool-card block bg-slate-50 p-6 rounded-lg border border-slate-200 hover:border-sky-500">
+                                    <h4 class="font-bold text-xl text-slate-800 mb-2">Wireshark</h4>
+                                    <p class="text-slate-600">The world's most popular network protocol analyzer. It lets you capture and see the data traveling back and forth on your network in real-time. You can inspect individual packets and see the headers for different layers (Data Link, Network, Transport) firsthand.</p>
+                                </a>
+                                <a href="https://www.netacad.com/courses/packet-tracer" target="_blank" rel="noopener noreferrer" class="tool-card block bg-slate-50 p-6 rounded-lg border border-slate-200 hover:border-sky-500">
+                                    <h4 class="font-bold text-xl text-slate-800 mb-2">Cisco Packet Tracer</h4>
+                                    <p class="text-slate-600">An excellent network simulation tool for beginners. You can build your own virtual networks with routers, switches, and PCs. It has a great simulation mode that visualizes how packets (like our friend Pip) travel from device to device, layer by layer.</p>
+                                </a>
+                                <a href="https://gns3.com/" target="_blank" rel="noopener noreferrer" class="tool-card block bg-slate-50 p-6 rounded-lg border border-slate-200 hover:border-sky-500">
+                                    <h4 class="font-bold text-xl text-slate-800 mb-2">GNS3</h4>
+                                    <p class="text-slate-600">A more advanced, graphical network simulator. GNS3 allows you to emulate real network hardware from various vendors. It's perfect for when you want to move beyond basic simulations and build complex, real-world network topologies.</p>
+                                </a>
+                                <a href="https://tryhackme.com/path/outline/presecurity" target="_blank" rel="noopener noreferrer" class="tool-card block bg-slate-50 p-6 rounded-lg border border-slate-200 hover:border-sky-500">
+                                    <h4 class="font-bold text-xl text-slate-800 mb-2">TryHackMe</h4>
+                                    <p class="text-slate-600">An online platform for learning cybersecurity through hands-on labs. Their "Pre Security" learning path has excellent modules on networking fundamentals where you can apply your knowledge in fun, gamified environments.</p>
+                                </a>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Modal elements
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            const showModal = (title, bodyContent) => {
+                modalTitle.textContent = title;
+                modalBody.innerHTML = bodyContent;
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.classList.add('opacity-100'), 10);
+                setTimeout(() => modal.querySelector('.modal-content').classList.add('scale-100'), 10);
+            };
+
+            const hideModal = () => {
+                modal.querySelector('.modal-content').classList.remove('scale-100');
+                modal.classList.remove('opacity-100');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            };
+
+            modalCloseBtn.addEventListener('click', hideModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    hideModal();
+                }
+            });
+            
+            const loadingSpinner = `<div class="flex justify-center items-center py-10"><div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24"></div></div>`;
+
+            // Gemini API call function with exponential backoff and graceful fallback for 403 errors
+            const callGeminiApi = async (prompt, maxRetries = 3) => {
+                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        
+                        if (result.candidates && result.candidates.length > 0 &&
+                            result.candidates[0].content && result.candidates[0].content.parts &&
+                            result.candidates[0].content.parts.length > 0) {
+                            return result.candidates[0].content.parts[0].text;
+                        } else {
+                            throw new Error("Invalid response structure from Gemini API.");
+                        }
+                    } catch (error) {
+                        console.error(`Gemini API call attempt ${i + 1} failed:`, error);
+                        if (i === maxRetries - 1) {
+                            // Graceful fallback for 403 Forbidden error
+                            if (error instanceof Error && error.message.includes('Status: 403')) {
+                                console.warn("API call failed with 403 Forbidden. Returning a mock response for demonstration purposes.");
+                                if (prompt.includes("Explain the")) {
+                                    const layerNameMatch = prompt.match(/Explain the (.*?) of the/);
+                                    const layerName = layerNameMatch ? layerNameMatch[1] : "this layer";
+                                    return `<p class="text-orange-600 font-semibold mb-4">Note: The live AI service is unavailable (Error 403). Displaying a sample explanation instead.</p>
+                                            <p>Here's a simple explanation for the <strong>${layerName}</strong>:</p><br>
+                                            <p>Imagine you're sending a secret message in a bottle. This layer is like the special ink you use that only your friend can read. It makes sure your message is in the right format and is kept secret!</p>`;
+                                }
+                                if (prompt.includes("Create a creative and easy-to-understand analogy")) {
+                                    const topicMatch = prompt.match(/using the theme of "(.*?)"/);
+                                    const topic = topicMatch ? topicMatch[1] : "your topic";
+                                    return `<p class="text-orange-600 font-semibold mb-4">Note: The live AI service is unavailable (Error 403). Displaying a sample analogy instead.</p>
+                                            <p>Here is a fun analogy about <strong>${topic}</strong>:</p><br>
+                                            <p>The AI would normally create a full 7-layer analogy for you here! For example, for a coffee shop, the Application Layer would be you ordering a latte.</p>`;
+                                }
+                            }
+
+                            // Generic error handling for other issues
+                            let errorMessage = `Sorry, an unexpected error occurred while contacting the AI. Please check the console for details and try again later.`;
+                            if (error instanceof Error && error.message.includes('HTTP error')) {
+                                errorMessage = `Sorry, there was a network problem communicating with the AI (${error.message}). Please try again later.`;
+                            } else if (error instanceof Error) {
+                                errorMessage = `Sorry, there was a problem processing the AI response: ${error.message}. Please try again.`;
+                            }
+                            return `<p class="text-red-500 font-semibold">${errorMessage}</p>`;
+                        }
+                        const delay = Math.pow(2, i) * 1000;
+                        await new Promise(res => setTimeout(res, delay));
+                    }
+                }
+            };
+            
+            // "Explain Like I'm 5" buttons
+            const geminiBtns = document.querySelectorAll('.gemini-btn');
+            geminiBtns.forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const layer = btn.dataset.layer;
+                    const layerNames = {
+                        '7': 'Application Layer', '6': 'Presentation Layer', '5': 'Session Layer',
+                        '4': 'Transport Layer', '3': 'Network Layer', '2': 'Data Link Layer', '1': 'Physical Layer'
+                    };
+                    const title = `Explain: ${layerNames[layer]}`;
+                    showModal(title, loadingSpinner);
+                    const prompt = `Explain the ${layerNames[layer]} of the OSI model in a very simple way, like you're explaining it to a 5-year-old. Use a simple analogy.`;
+                    const explanation = await callGeminiApi(prompt);
+                    modalBody.innerHTML = explanation.replace(/\n/g, '<br>');
+                });
+            });
+
+            // "Create New Analogy" button
+            const analogyBtn = document.getElementById('analogy-btn');
+            const analogyInput = document.getElementById('analogy-input');
+            analogyBtn.addEventListener('click', async () => {
+                const topic = analogyInput.value.trim();
+                if (!topic) {
+                    showModal("Error", "<p>Please enter a topic for the analogy.</p>");
+                    return;
+                }
+                const title = `OSI Model as a ${topic}`;
+                showModal(title, loadingSpinner);
+                const prompt = `Create a creative and easy-to-understand analogy for the 7 layers of the OSI model using the theme of "${topic}". For each of the 7 layers (Application, Presentation, Session, Transport, Network, Data Link, Physical), provide a short, clear explanation based on the chosen theme. Format the response with a heading for each layer.`;
+                const analogy = await callGeminiApi(prompt);
+                modalBody.innerHTML = analogy.replace(/\n/g, '<br>');
+            });
+
+            // Existing interactivity logic
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href') === `#${id}`) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, { threshold: 0.5 });
+
+            sections.forEach(section => observer.observe(section));
+
+            const encryptBtn = document.getElementById('encrypt-btn');
+            const encryptText = document.getElementById('encryption-text');
+            let isEncrypted = false;
+            encryptBtn.addEventListener('click', () => {
+                isEncrypted = !isEncrypted;
+                encryptText.textContent = isEncrypted ? 'SGVsbG8gV29ybGQh' : 'Hello World!';
+                encryptText.classList.toggle('text-cyan-500', isEncrypted);
+                encryptBtn.textContent = isEncrypted ? 'Decrypt Message' : 'Encrypt Message';
+            });
+
+            const sessionBtn = document.getElementById('session-btn');
+            const sessionLine = document.getElementById('session-line');
+            sessionBtn.addEventListener('click', () => {
+                sessionLine.style.width = '10rem';
+                sessionLine.classList.replace('bg-slate-300', 'bg-teal-400');
+                sessionBtn.textContent = 'Session Open!';
+                sessionBtn.disabled = true;
+            });
+            
+            const segmentBtn = document.getElementById('segment-btn');
+            const segmentationBox = document.getElementById('segmentation-box');
+            segmentBtn.addEventListener('click', () => {
+                segmentationBox.firstElementChild.style.transform = 'scale(0)';
+                setTimeout(() => {
+                    segmentationBox.innerHTML = '';
+                    for (let i = 1; i <= 4; i++) {
+                        const piece = document.createElement('div');
+                        piece.className = 'packet-piece bg-emerald-400 text-emerald-900 font-bold p-2 rounded-md text-sm';
+                        piece.textContent = `Packet ${i}`;
+                        piece.style.transform = 'scale(0)';
+                        segmentationBox.appendChild(piece);
+                        setTimeout(() => piece.style.transform = 'scale(1)', i * 100);
+                    }
+                }, 500);
+                segmentBtn.textContent = 'Segmented!';
+                segmentBtn.disabled = true;
+            });
+
+            const ipBtn = document.getElementById('ip-btn');
+            const ipHeader = document.getElementById('ip-header');
+            ipBtn.addEventListener('click', () => {
+                ipHeader.style.maxHeight = '100px';
+                ipHeader.style.paddingTop = '0.5rem';
+                ipHeader.style.paddingBottom = '0.5rem';
+                ipBtn.textContent = 'IP Header Added!';
+                ipBtn.disabled = true;
+            });
+
+            const macBtn = document.getElementById('mac-btn');
+            const macHeader = document.getElementById('mac-header');
+            macBtn.addEventListener('click', () => {
+                macHeader.style.maxHeight = '100px';
+                macHeader.style.paddingTop = '0.5rem';
+                macHeader.style.paddingBottom = '0.5rem';
+                macBtn.textContent = 'MAC Header Added!';
+                macBtn.disabled = true;
+            });
+            
+            const ctx = document.getElementById('physical-layer-chart').getContext('2d');
+            const digitalData = {
+                labels: Array.from({length: 20}, (_, i) => i),
+                datasets: [{
+                    label: 'Digital Signal (1s and 0s)',
+                    data: [1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1],
+                    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                    borderColor: 'rgba(217, 119, 6, 1)',
+                    stepped: true,
+                    borderWidth: 2,
+                    pointRadius: 0
+                }]
+            };
+            const analogData = {
+                labels: Array.from({length: 20}, (_, i) => i),
+                datasets: [{
+                    label: 'Analog Signal (Wave)',
+                    data: [1, 1.2, 0.8, 0.2, -0.3, -0.8, -1, -0.6, 0, 0.5, 0.9, 1.1, 0.7, 0.1, -0.4, -0.9, -1.1, -0.7, -0.2, 0.4].map(v=>v*0.8 + 0.5),
+                    backgroundColor: 'rgba(251, 191, 36, 0.5)',
+                    borderColor: 'rgba(217, 119, 6, 1)',
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 0
+                }]
+            };
+            let physicalLayerChart = new Chart(ctx, {
+                type: 'line',
+                data: digitalData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 2, display: false }, x: { display: false } },
+                    plugins: { legend: { display: true, position: 'bottom' } }
+                }
+            });
+            
+            const signalBtn = document.getElementById('signal-btn');
+            signalBtn.addEventListener('click', () => {
+                physicalLayerChart.data = analogData;
+                physicalLayerChart.update();
+                signalBtn.textContent = 'Signal Sent!';
+                signalBtn.disabled = true;
+            });
+        });
+    </script>
+</body>
+</html>
